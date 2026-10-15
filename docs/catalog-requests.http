@@ -1,0 +1,134 @@
+@base = http://localhost:8080/api
+@token = COLE_UM_ACCESS_TOKEN_VALIDO_APENAS_NO_SEU_CLIENTE_HTTP
+@marketId = SUBSTITUA_PELO_ID_RETORNADO
+@productId = SUBSTITUA_PELO_ID_RETORNADO
+
+### Categorias (publico)
+GET {{base}}/categories
+
+### Mercados (publico)
+GET {{base}}/markets?limit=50&offset=0
+
+### Ofertas (publico)
+GET {{base}}/products
+
+### Busca (publico)
+GET {{base}}/products/search?q=iogurte&category=laticinios
+
+### Produtos de um mercado
+GET {{base}}/markets/{{marketId}}/products
+
+### Cadastrar o proprio mercado
+POST {{base}}/owner/market
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "marketName": "Meu Mercado",
+  "marketPhone": "11999999999",
+  "document": "12345678000190",
+  "postalCode": "01001000",
+  "state": "SP",
+  "city": "São Paulo",
+  "neighborhood": "Centro",
+  "address": "Rua Exemplo",
+  "addressNumber": "100",
+  "complement": "",
+  "name": "Nome",
+  "lastName": "Sobrenome",
+  "username": "meumercado",
+  "email": "responsavel@example.com",
+  "phone": "11999999999",
+  "referralSource": ""
+}
+
+### Ler meu mercado
+GET {{base}}/owner/market
+Authorization: Bearer {{token}}
+
+### Cadastrar produto: ajuste as datas para o dia do teste
+POST {{base}}/owner/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Iogurte natural",
+  "categoryId": "laticinios",
+  "manufactureDate": "2026-10-10",
+  "expirationDate": "2026-10-20",
+  "originalPrice": 10.00,
+  "offerPrice": 7.50,
+  "stockQuantity": 8
+}
+
+### Listar meus produtos
+GET {{base}}/owner/products
+Authorization: Bearer {{token}}
+
+### Atualizar produto
+PUT {{base}}/owner/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Iogurte natural",
+  "categoryId": "laticinios",
+  "manufactureDate": "2026-10-10",
+  "expirationDate": "2026-10-20",
+  "originalPrice": 10.00,
+  "offerPrice": 6.50,
+  "stockQuantity": 5
+}
+
+### Desativar oferta
+PATCH {{base}}/owner/products/{{productId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"isActive": false}
+
+### Horarios completos
+PUT {{base}}/owner/market/hours
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"days":[
+  {"day":0,"enabled":false,"periods":[]},
+  {"day":1,"enabled":true,"periods":[{"opensAt":"08:00","closesAt":"12:00"},{"opensAt":"13:00","closesAt":"18:00"}]},
+  {"day":2,"enabled":false,"periods":[]},
+  {"day":3,"enabled":false,"periods":[]},
+  {"day":4,"enabled":false,"periods":[]},
+  {"day":5,"enabled":false,"periods":[]},
+  {"day":6,"enabled":false,"periods":[]}
+]}
+
+### Excluir produto
+DELETE {{base}}/owner/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### Enviar/substituir foto do próprio mercado (até 5 MB; ajuste o caminho)
+PUT {{base}}/owner/market/image
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=ecofood-market-photo
+
+--ecofood-market-photo
+Content-Disposition: form-data; name="file"; filename="mercado.jpg"
+Content-Type: image/jpeg
+
+< ./mercado.jpg
+--ecofood-market-photo--
+
+### Foto pública atual (imageUri da resposta contém a versão para invalidar cache)
+GET {{base}}/markets/{{marketId}}/image
+
+### Enviar foto (troque o caminho local antes de executar)
+PUT {{base}}/owner/products/{{productId}}/image
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=ecofood-photo
+
+--ecofood-photo
+Content-Disposition: form-data; name="file"; filename="produto.jpg"
+Content-Type: image/jpeg
+
+< ./produto.jpg
+--ecofood-photo--

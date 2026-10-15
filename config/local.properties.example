@@ -1,0 +1,10 @@
+# Copy to config/local.properties and fill in values from Supabase > Connect.
+# Select Session pooler (5432); copy the exact host and username shown there.
+DB_URL=jdbc:postgresql://SEU_HOST_DO_SESSION_POOLER:5432/postgres?sslmode=require
+DB_USERNAME=postgres.SEU_PROJECT_REF
+# Database password, not an API key. In Java .properties, escape a literal
+# backslash as two backslashes, e.g. abc\\def must be written abc\\\\def.
+DB_PASSWORD=SUA_SENHA_DO_BANCO
+
+# Chave PUBLICA do projeto (Settings > API Keys). Nunca use secret/service_role.
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_SUBSTITUA
