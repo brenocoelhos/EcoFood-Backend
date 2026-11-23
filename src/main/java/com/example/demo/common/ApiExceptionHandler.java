@@ -11,6 +11,11 @@ import java.util.List;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public java.util.Map<String,String> handleDatabaseUnavailable() {
+        return java.util.Map.of("message","Não foi possível concluir a operação. Tente novamente.");
+    }
 
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     public org.springframework.http.ResponseEntity<java.util.Map<String, String>> handleStatus(org.springframework.web.server.ResponseStatusException exception) {

@@ -14,6 +14,32 @@ public class CatalogRepository {
     public CatalogRepository(JdbcTemplate db) { this.db = db; }
     public record MarketRow(UUID id, UUID ownerId, MarketInput profile, boolean hoursConfigured) {}
     public record ProductRow(OwnerProduct product, UUID marketId, String marketName, String location) {}
+    public record CatalogSource(String contentType,byte[] content) {}
+    public Optional<CatalogSource> catalogSource(UUID id) {
+        // One statement captures existence and image in the same snapshot, even during source deletion/replacement.
+        return db.query("SELECT i.content_type,i.content FROM ecofood.products p LEFT JOIN ecofood.product_images i ON i.product_id=p.id WHERE p.id=?",
+            (r,n)->new CatalogSource(r.getString(1),r.getBytes(2)),id).stream().findFirst();
+    }
+    public List<CatalogProduct> suggestions(String query,int limit) {
+        String escaped=query.replace("!","!!").replace("%","!%").replace("_","!_");
+        return db.query("""
+            SELECT p.id,p.name,p.category_id,m.market_name,i.product_id AS image_id
+            FROM ecofood.products p JOIN ecofood.markets m ON m.id=p.market_id
+            LEFT JOIN ecofood.product_images i ON i.product_id=p.id
+            WHERE p.search_name LIKE ? ESCAPE '!'
+            ORDER BY CASE WHEN p.search_name=? THEN 0 WHEN p.search_name LIKE ? ESCAPE '!' THEN 1 ELSE 2 END,
+                     p.search_name,p.id
+            LIMIT ?
+            """,(r,n)->new CatalogProduct(r.getObject("id",UUID.class),r.getString("name"),r.getString("category_id"),
+                r.getObject("image_id")==null?null:"/api/owner/product-catalog/"+r.getObject("id",UUID.class)+"/image",r.getString("market_name")),
+                "%"+escaped+"%",query,escaped+"%",limit);
+    }
+    public int expireProducts(LocalDate today) {
+        return db.update("UPDATE ecofood.products SET is_active=false WHERE is_active=true AND expiration_date<?",today);
+    }
+    public void expireProduct(UUID id,LocalDate today) {
+        db.update("UPDATE ecofood.products SET is_active=false WHERE id=? AND is_active=true AND expiration_date<?",id,today);
+    }
     private static final String PRODUCT_SELECT = """
         SELECT p.*, m.market_name, m.city, m.state,
           CASE WHEN i.product_id IS NULL THEN false ELSE true END AS has_image

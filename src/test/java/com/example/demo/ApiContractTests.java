@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class ApiContractTests {
+class ApiContractTests extends VerifiedIdentityTestSupport {
     private static final String ISSUER = "https://test.supabase.co/auth/v1";
     private static final String USER_ID = "d1a790af-14c7-4f74-a558-a951d143aa22";
     private static final ECKey KEY;

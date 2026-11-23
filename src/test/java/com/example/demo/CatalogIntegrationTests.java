@@ -24,7 +24,7 @@ import static org.hamcrest.Matchers.hasSize;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-class CatalogIntegrationTests {
+class CatalogIntegrationTests extends VerifiedIdentityTestSupport {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate db;
     private final String owner=UUID.randomUUID().toString();
@@ -60,7 +60,11 @@ class CatalogIntegrationTests {
         mvc.perform(get("/api/products/search").param("q","maca")).andExpect(jsonPath("$",hasSize(1)));
         mvc.perform(get("/api/products").param("category","carnes-aves")).andExpect(jsonPath("$",hasSize(0)));
         mvc.perform(get("/api/markets/"+market)).andExpect(jsonPath("$.availableItems").value(1))
-            .andExpect(jsonPath("$.maxDiscount").value("até 25%"));
+            .andExpect(jsonPath("$.maxDiscount").value("até 25%"))
+            .andExpect(jsonPath("$.marketPhone").value("11999999999"))
+            .andExpect(jsonPath("$.phone").doesNotExist())
+            .andExpect(jsonPath("$.email").doesNotExist())
+            .andExpect(jsonPath("$.profile").doesNotExist());
         mvc.perform(put("/api/owner/products/"+product).with(user()).contentType(MediaType.APPLICATION_JSON)
             .content(productBody().replace("7.50","6.00"))).andExpect(status().isOk());
         assertEquals("6.00",db.queryForObject("select offer_price from ecofood.products where id=?",java.math.BigDecimal.class,product).toString());

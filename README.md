@@ -143,3 +143,8 @@ verificada. O catálogo já persiste mercados, horários, categorias, produtos e
 ## Catálogo persistente
 
 Veja [contratos, tabelas e regras](docs/catalog-api.md) e [requisições de exemplo](docs/catalog-requests.http).
+
+## Exclusão da própria conta
+DELETE /api/profile exige a sessão autenticada e exclui o usuário no Supabase Auth. As migrações PostgreSQL existentes removem os dados vinculados por ON DELETE CASCADE.
+Configurar SUPABASE_SERVICE_ROLE_KEY no ambiente do backend (propriedade supabase.service-role-key). Nunca colocar essa chave em EXPO_PUBLIC ou no frontend. Sem essa configuração, a rota retorna 503.
+Publicar o backend antes de testar a exclusão no aplicativo. Usar contas descartáveis de consumidor e de lojista para verificar a exclusão e a impossibilidade de novo login.

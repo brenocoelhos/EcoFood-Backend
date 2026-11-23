@@ -19,9 +19,38 @@ import org.springframework.web.multipart.MultipartFile;
 @Transactional(readOnly=true)
 public class CatalogService {
     private final CatalogRepository repo;
+    private final Clock clock;
     private static final ZoneId ZONE=ZoneId.of("America/Sao_Paulo");
-    public CatalogService(CatalogRepository repo) {this.repo=repo;}
-    private LocalDate today() {return LocalDate.now(ZONE);}
+    public CatalogService(CatalogRepository repo,Clock clock) {this.repo=repo;this.clock=clock;}
+    private LocalDate today() {return LocalDate.now(clock.withZone(ZONE));}
+    public void requireCatalogOwner(UUID owner) {
+        if(repo.ownerMarket(owner,false).isEmpty()) throw new ResponseStatusException(FORBIDDEN,"O catálogo é exclusivo para contas com mercado cadastrado.");
+    }
+    public List<CatalogProduct> suggestions(UUID owner,String query,int limit) {
+        requireCatalogOwner(owner);
+        String normalized=normalize(query);
+        require(normalized.length()>=2,"Digite pelo menos 2 caracteres para pesquisar.");
+        return repo.suggestions(normalized,limit);
+    }
+    public CatalogRepository.ProductImage catalogImage(UUID owner,UUID id) {
+        requireCatalogOwner(owner);
+        return repo.image(id).orElseThrow(this::missing);
+    }
+    @Transactional public OwnerProduct fromCatalog(UUID owner,FromCatalogInput input) {
+        requireCatalogOwner(owner);
+        var market=ownMarket(owner,true);
+        var product=input.product();validateProduct(product);
+        try {
+            var source=repo.catalogSource(input.sourceProductId()).orElseThrow(()->new ResponseStatusException(NOT_FOUND,"O produto de origem não existe mais. Escolha outra sugestão ou cadastre manualmente."));
+            UUID id=UUID.randomUUID();
+            repo.createProduct(id,market.id(),product,normalize(product.name()));
+            if(source.content()!=null) repo.saveImage(id,source.contentType(),source.content());
+            return repo.product(id).orElseThrow().product();
+        } catch(org.springframework.dao.DataAccessException e) {
+            throw new ResponseStatusException(SERVICE_UNAVAILABLE,"Não foi possível copiar o cadastro e sua foto. Nenhuma oferta foi criada. Tente novamente.");
+        }
+    }
+    @Transactional public int expireProducts() {return repo.expireProducts(today());}
     private ResponseStatusException missing() {return new ResponseStatusException(NOT_FOUND,"Registro não encontrado.");}
     private void require(boolean valid,String message) {if(!valid) throw new ResponseStatusException(BAD_REQUEST,message);}
     public List<Category> categories() {return repo.categories();}
@@ -30,7 +59,7 @@ public class CatalogService {
     private PublicMarket publicMarket(CatalogRepository.MarketRow m) {
         var p=m.profile(); var stats=repo.marketStats(m.id(),today());
         return new PublicMarket(m.id(),p.marketName(),"","mercado",p.city()+" · "+p.state(),stats[0],stats[0]+" itens",
-            stats[1]>0?"até "+stats[1]+"%":"Sem ofertas",p.address()+", "+p.addressNumber()+" - "+p.neighborhood(),repo.hours(m),repo.marketImageUri(m.id()));
+            stats[1]>0?"até "+stats[1]+"%":"Sem ofertas",p.address()+", "+p.addressNumber()+" - "+p.neighborhood(),repo.hours(m),repo.marketImageUri(m.id()),p.marketPhone());
     }
     public OwnerMarket ownerMarket(UUID owner) {return ownerResponse(ownMarket(owner,false));}
     private CatalogRepository.MarketRow ownMarket(UUID owner,boolean lock) {
@@ -112,7 +141,7 @@ public class CatalogService {
         repo.createProduct(id,market.id(),p,normalize(p.name()));return repo.product(id).orElseThrow().product();
     }
     @Transactional public OwnerProduct updateProduct(UUID owner,UUID id,ProductInput p) {
-        owned(owner,id,true);validateProduct(p);repo.updateProduct(id,p,normalize(p.name()));return repo.product(id).orElseThrow().product();
+        owned(owner,id,true);validateProduct(p);repo.expireProduct(id,today());repo.updateProduct(id,p,normalize(p.name()));return repo.product(id).orElseThrow().product();
     }
     private void validateProduct(ProductInput p) {
         require(repo.categoryExists(p.categoryId()),"Categoria inválida.");

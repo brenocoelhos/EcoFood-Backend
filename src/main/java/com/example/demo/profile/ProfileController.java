@@ -11,12 +11,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/profile")
 public class ProfileController {
     private final com.example.demo.auth.UsernameRepository usernames;
-    public ProfileController(com.example.demo.auth.UsernameRepository usernames) { this.usernames = usernames; }
+    private final org.springframework.jdbc.core.JdbcTemplate db;
+    public ProfileController(com.example.demo.auth.UsernameRepository usernames,org.springframework.jdbc.core.JdbcTemplate db) { this.usernames = usernames;this.db=db; }
     @GetMapping
-    public AccountResponse getProfile(@AuthenticationPrincipal Jwt jwt) {
+    public AccountResponse getProfile(@AuthenticationPrincipal Jwt jwt,org.springframework.security.core.Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest request) {
         Map<String, Object> metadata = jwt.getClaimAsMap("user_metadata");
-        return new AccountResponse(jwt.getSubject(), jwt.getClaimAsString("email"),
-                text(metadata, "name"), text(metadata, "last_name"), usernames.usernameFor(java.util.UUID.fromString(jwt.getSubject())));
+        var identity=(com.example.demo.admin.TrustedIdentityClient.Identity)request.getAttribute("verifiedIdentity");
+        var id=java.util.UUID.fromString(jwt.getSubject());
+        String type=authentication.getAuthorities().stream().anyMatch(a->a.getAuthority().equals("ROLE_ADMIN"))?"admin":
+            db.queryForObject("SELECT count(*) FROM ecofood.markets WHERE owner_id=?",Integer.class,id)>0?"marketOwner":null;
+        return new AccountResponse(jwt.getSubject(), identity.email(),
+                text(metadata, "name"), text(metadata, "last_name"), usernames.usernameFor(id),type);
     }
 
     private String text(Map<String, Object> metadata, String key) {
@@ -24,5 +30,5 @@ public class ProfileController {
     }
 
     // User-editable metadata is display data, never authorization data.
-    public record AccountResponse(String id, String email, String name, String lastName, String username) {}
+    public record AccountResponse(String id, String email, String name, String lastName, String username,String accountType) {}
 }

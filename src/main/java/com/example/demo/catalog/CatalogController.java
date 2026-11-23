@@ -16,7 +16,23 @@ import org.springframework.web.multipart.MultipartFile;
 @Validated
 public class CatalogController {
     private final CatalogService service;
-    public CatalogController(CatalogService service) {this.service=service;}
+    private final CatalogRateLimiter catalogLimiter;
+    public CatalogController(CatalogService service,CatalogRateLimiter catalogLimiter) {this.service=service;this.catalogLimiter=catalogLimiter;}
+    @GetMapping("/owner/product-catalog") public List<CatalogProduct> catalog(@AuthenticationPrincipal Jwt jwt,
+        @RequestParam @Size(min=2,max=160) String q,@RequestParam(defaultValue="8") @Min(1) @Max(8) int limit) {
+        UUID owner=owner(jwt);service.requireCatalogOwner(owner);catalogLimiter.check(owner);
+        return service.suggestions(owner,q,limit);
+    }
+    @GetMapping("/owner/product-catalog/{id}/image") public ResponseEntity<byte[]> catalogImage(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id) {
+        UUID owner=owner(jwt);service.requireCatalogOwner(owner);catalogLimiter.check(owner);
+        var image=service.catalogImage(owner,id);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(image.contentType()))
+            .header("X-Content-Type-Options","nosniff").cacheControl(CacheControl.noStore()).body(image.content());
+    }
+    @PostMapping("/owner/products/from-catalog") @ResponseStatus(HttpStatus.CREATED)
+    public OwnerProduct fromCatalog(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody FromCatalogInput input) {
+        return service.fromCatalog(owner(jwt),input);
+    }
     private UUID owner(Jwt jwt) {return UUID.fromString(jwt.getSubject());}
     @GetMapping("/categories") public List<Category> categories() {return service.categories();}
     @GetMapping("/markets") public List<PublicMarket> markets(@RequestParam(defaultValue="50") @Min(1) @Max(100) int limit,@RequestParam(defaultValue="0") @Min(0) int offset) {return service.markets(limit,offset);}

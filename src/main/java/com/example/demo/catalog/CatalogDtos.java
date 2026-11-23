@@ -10,6 +10,18 @@ import java.util.UUID;
 public final class CatalogDtos {
     private CatalogDtos() {}
     public record Category(String id, String name) {}
+    public record CatalogProduct(UUID id,String name,String categoryId,String imageUri,String marketName) {}
+    public record FromCatalogInput(
+        @NotNull UUID sourceProductId,
+        @NotBlank @Size(max=160) String name,
+        @NotBlank @Size(max=50) String categoryId,
+        LocalDate manufactureDate,
+        @NotNull LocalDate expirationDate,
+        @NotNull @DecimalMin("0.01") @Digits(integer=8,fraction=2) BigDecimal originalPrice,
+        @NotNull @DecimalMin("0.01") @Digits(integer=8,fraction=2) BigDecimal offerPrice,
+        @NotNull @Min(0) @Max(1000000) Integer stockQuantity) {
+        public ProductInput product() { return new ProductInput(name,categoryId,manufactureDate,expirationDate,originalPrice,offerPrice,stockQuantity); }
+    }
     public record MarketInput(
         @NotBlank @Size(max=160) String marketName,
         @NotBlank @Size(max=25) String marketPhone,
@@ -35,7 +47,7 @@ public final class CatalogDtos {
     public record OwnerMarket(UUID id, MarketInput profile, List<DayHours> businessHours, String imageUri) {}
     public record PublicMarket(UUID id, String name, String distance, String type,
         String displayDistance, int availableItems, String availableItemsLabel, String maxDiscount,
-        String address, List<DayHours> businessHours, String imageUri) {}
+        String address, List<DayHours> businessHours, String imageUri, String marketPhone) {}
     public record ProductInput(
         @NotBlank @Size(max=160) String name,
         @NotBlank @Size(max=50) String categoryId,
